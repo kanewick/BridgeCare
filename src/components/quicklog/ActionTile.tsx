@@ -14,12 +14,19 @@ import Animated, {
 } from "react-native-reanimated";
 import { colors, radius, spacing, shadow, theme } from "../../theme";
 import { QuickAction } from "../../data/quickActions";
+import { IconDisplay } from "../IconDisplay";
 
 export type SelectedState = {
   [actionId: string]: {
     variants: string[];
     notes?: string;
-    metrics?: { pain?: number; temp?: number; bp?: string; hr?: number };
+    metrics?: {
+      pain?: number;
+      temp?: number;
+      bp?: string;
+      hr?: number;
+      when?: "now" | "earlier" | "scheduled";
+    };
   };
 };
 
@@ -153,8 +160,15 @@ export const ActionTile: React.FC<ActionTileProps> = ({
             : "Tap to select, long press for options"
         }
       >
-        {/* Emoji Icon */}
-        <Text style={styles.emoji}>{action.emoji}</Text>
+        {/* Icon Container */}
+        <View style={styles.iconWrapper}>
+          <IconDisplay
+            emoji={action.emoji}
+            icon={action.icon}
+            size={28}
+            useIcons={true} // Change to false to use emojis, true for professional icons
+          />
+        </View>
 
         {/* Content */}
         <View style={styles.content}>
@@ -214,13 +228,25 @@ const styles = StyleSheet.create({
   },
   tileSelected: {
     backgroundColor: "#E6F6FD", // bg-primary/8
-    borderColor: "transparent",
+    borderColor: colors.primary,
     borderWidth: 2,
     borderStyle: "solid",
+    // Add a subtle shadow to make selection more obvious
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   tileDisabled: {
     opacity: 0.5,
     backgroundColor: colors.chipBg,
+  },
+  iconWrapper: {
+    height: 36,
+    marginBottom: spacing.xs,
+    alignItems: "center",
+    justifyContent: "center",
   },
   emoji: {
     fontSize: 32,

@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { Ionicons } from "@expo/vector-icons";
+import { IconDisplay } from "../IconDisplay";
 import * as Haptics from "expo-haptics";
 import Animated, {
   useAnimatedStyle,
@@ -48,7 +49,7 @@ export const ActionBottomSheet: React.FC<ActionBottomSheetProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const bottomSheetRef = React.useRef<BottomSheetModal>(null);
-  const snapPoints = useMemo(() => ["40%", "70%"], []);
+  const snapPoints = useMemo(() => ["50%", "80%"], []); // Increased snap points for better keyboard handling
 
   const [localNotes, setLocalNotes] = useState("");
   const [painValue, setPainValue] = useState(0);
@@ -59,8 +60,9 @@ export const ActionBottomSheet: React.FC<ActionBottomSheetProps> = ({
     "now"
   );
 
-  // Animation values
-  const chipScale = useSharedValue(1);
+  // Animation values - separate for different chip types
+  const variantChipScale = useSharedValue(1);
+  const timeChipScale = useSharedValue(1);
 
   // Initialize local state when sheet opens
   useEffect(() => {
@@ -71,7 +73,7 @@ export const ActionBottomSheet: React.FC<ActionBottomSheetProps> = ({
       setTempValue(selectedData?.metrics?.temp?.toString() || "");
       setBpValue(selectedData?.metrics?.bp || "");
       setHrValue(selectedData?.metrics?.hr?.toString() || "");
-      setTimeValue((selectedData?.metrics as any)?.when || "now");
+      setTimeValue(selectedData?.metrics?.when || "now");
     }
   }, [visible, action, selected]);
 
@@ -91,17 +93,80 @@ export const ActionBottomSheet: React.FC<ActionBottomSheetProps> = ({
   const handleVariantPress = async (variantId: string) => {
     if (!action) return;
 
-    // Haptic feedback
-    if (Platform.OS === "ios") {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      // Haptic feedback
+      if (Platform.OS === "ios") {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+
+      // Chip animation
+      variantChipScale.value = withSpring(
+        0.98,
+        { damping: 8, stiffness: 300 },
+        () => {
+          variantChipScale.value = withSpring(1, {
+            damping: 8,
+            stiffness: 300,
+          });
+        }
+      );
+
+      onVariantToggle(action.id, variantId);
+    } catch (error) {
+      console.warn("Error in handleVariantPress:", error);
+      // Still toggle the variant even if haptics fail
+      onVariantToggle(action.id, variantId);
     }
+  };
 
-    // Chip animation
-    chipScale.value = withSpring(0.98, { damping: 8, stiffness: 300 }, () => {
-      chipScale.value = withSpring(1, { damping: 8, stiffness: 300 });
-    });
+  const handleTimePress = async (
+    timeOption: "now" | "earlier" | "scheduled"
+  ) => {
+    try {
+      // Haptic feedback
+      if (Platform.OS === "ios") {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
 
-    onVariantToggle(action.id, variantId);
+      // Chip animation
+      timeChipScale.value = withSpring(
+        0.98,
+        { damping: 8, stiffness: 300 },
+        () => {
+          timeChipScale.value = withSpring(1, { damping: 8, stiffness: 300 });
+        }
+      );
+
+      setTimeValue(timeOption);
+
+      // Submit metrics with the new time value immediately
+      if (action) {
+        const metrics: any = {};
+        if (
+          action.id === "meal" ||
+          action.id === "rest" ||
+          action.id === "activity"
+        ) {
+          metrics.when = timeOption; // Use the new value directly
+        }
+        onMetricsChange(action.id, metrics);
+      }
+    } catch (error) {
+      console.warn("Error in handleTimePress:", error);
+      // Still update the time value even if haptics fail
+      setTimeValue(timeOption);
+      if (action) {
+        const metrics: any = {};
+        if (
+          action.id === "meal" ||
+          action.id === "rest" ||
+          action.id === "activity"
+        ) {
+          metrics.when = timeOption;
+        }
+        onMetricsChange(action.id, metrics);
+      }
+    }
   };
 
   const handleNotesSubmit = () => {
@@ -224,14 +289,20 @@ export const ActionBottomSheet: React.FC<ActionBottomSheetProps> = ({
     );
   };
 
-  const chipAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: chipScale.value }],
+  const variantChipAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: variantChipScale.value }],
+  }));
+
+  const timeChipAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: timeChipScale.value }],
   }));
 
   if (!action) return null;
 
   const selectedData = selected[action.id];
-  const selectedVariants = selectedData?.variants || [];
+  const selectedVariants = Array.isArray(selectedData?.variants)
+    ? selectedData.variants
+    : [];
 
   return (
     <BottomSheetModal
@@ -239,271 +310,278 @@ export const ActionBottomSheet: React.FC<ActionBottomSheetProps> = ({
       index={0}
       snapPoints={snapPoints}
       onChange={handleSheetChanges}
-      enablePanDownToClose
+      enablePanDownToClose={false} // Prevent accidental closes while typing
       onDismiss={onClose}
       backgroundStyle={styles.sheetBackground}
       handleIndicatorStyle={styles.handleIndicator}
+      android_keyboardInputMode="adjustResize"
+      keyboardBehavior="interactive"
+      keyboardBlurBehavior="restore"
     >
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        <BottomSheetView style={styles.content}>
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <View style={styles.emojiChip}>
-                <Text style={styles.emoji}>{action.emoji}</Text>
-              </View>
-              <View style={styles.titleContainer}>
-                <Text style={styles.title}>{action.label}</Text>
-                {resident && (
-                  <Text style={styles.subtitle}>
-                    {resident.name} · Room {resident.room}
-                  </Text>
-                )}
-              </View>
+      <BottomSheetView style={styles.content}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <View style={styles.emojiChip}>
+              <IconDisplay
+                emoji={action.emoji}
+                icon={action.icon}
+                size={20}
+                useIcons={true}
+                color={colors.primary}
+              />
             </View>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={onClose}
-              testID={`${testID}-close`}
-            >
-              <Ionicons name="close" size={24} color={colors.text} />
-            </TouchableOpacity>
+            <View style={styles.titleContainer}>
+              <Text style={styles.title}>{action.label}</Text>
+              {resident && (
+                <Text style={styles.subtitle}>
+                  {resident.name} · Room {resident.room}
+                </Text>
+              )}
+            </View>
           </View>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={onClose}
+            testID={`${testID}-close`}
+          >
+            <Ionicons name="close" size={24} color={colors.text} />
+          </TouchableOpacity>
+        </View>
 
-          {/* Content */}
-          <View style={styles.contentWrapper}>
-            <ScrollView
-              style={styles.scrollView}
-              contentContainerStyle={styles.scrollContent}
-              showsVerticalScrollIndicator={false}
-            >
-              {/* Options Section */}
-              {action.variants && action.variants.length > 0 && (
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Options</Text>
-                  <View style={styles.chipContainer}>
-                    {action.variants.map((variant) => {
-                      const isSelected = selectedVariants.includes(variant.id);
-                      return (
-                        <Animated.View
-                          key={variant.id}
-                          style={chipAnimatedStyle}
-                        >
-                          <TouchableOpacity
-                            style={[
-                              styles.chip,
-                              isSelected && styles.chipSelected,
-                            ]}
-                            onPress={() => handleVariantPress(variant.id)}
-                            accessibilityRole="button"
-                            accessibilityState={{ selected: isSelected }}
-                            accessibilityLabel={`${variant.label}, ${
-                              isSelected ? "selected" : "not selected"
-                            }`}
-                            testID={`${testID}-variant-${variant.id}`}
-                          >
-                            <Text
-                              style={[
-                                styles.chipText,
-                                isSelected && styles.chipTextSelected,
-                              ]}
-                            >
-                              {variant.label}
-                            </Text>
-                            {isSelected && (
-                              <Ionicons
-                                name="checkmark"
-                                size={16}
-                                color={colors.primary}
-                                style={styles.chipIcon}
-                              />
-                            )}
-                          </TouchableOpacity>
-                        </Animated.View>
-                      );
-                    })}
-                  </View>
-                  <Text style={styles.chipCaption}>
-                    {action.variants.length === 1
-                      ? "Choose one"
-                      : "Choose all that apply"}
-                  </Text>
-                </View>
-              )}
-
-              {/* Pain Scale Section */}
-              {action.id === "pain" && (
-                <View style={styles.section}>
-                  <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Pain Level</Text>
-                    <View style={styles.valueBadge}>
-                      <Text style={styles.valueBadgeText}>{painValue}/10</Text>
-                    </View>
-                  </View>
-                  <View style={styles.painScaleContainer}>
-                    {Array.from({ length: 11 }, (_, index) => (
-                      <TouchableOpacity
-                        key={index}
-                        style={[
-                          styles.painScaleButton,
-                          painValue === index && styles.painScaleButtonSelected,
-                        ]}
-                        onPress={() => {
-                          setPainValue(index);
-                          handleMetricsSubmit();
-                        }}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected: painValue === index }}
-                        accessibilityLabel={`Pain level ${index}`}
-                      >
-                        <Text
-                          style={[
-                            styles.painScaleText,
-                            painValue === index && styles.painScaleTextSelected,
-                          ]}
-                        >
-                          {index}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                  <View style={styles.painLabels}>
-                    <Text style={styles.painLabel}>No pain</Text>
-                    <Text style={styles.painLabel}>Severe</Text>
-                  </View>
-                </View>
-              )}
-
-              {/* Vitals Section */}
-              {action.id === "vitals" && (
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Vital Signs</Text>
-                  <View style={styles.vitalsContainer}>
-                    <View style={styles.vitalInput}>
-                      <Text style={styles.vitalLabel}>Temperature (°C)</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={tempValue}
-                        onChangeText={setTempValue}
-                        onBlur={handleMetricsSubmit}
-                        placeholder="36.5"
-                        keyboardType="decimal-pad"
-                        maxLength={5}
-                      />
-                    </View>
-                    <View style={styles.vitalInput}>
-                      <Text style={styles.vitalLabel}>Blood Pressure</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={bpValue}
-                        onChangeText={setBpValue}
-                        onBlur={handleMetricsSubmit}
-                        placeholder="120/80"
-                        maxLength={10}
-                      />
-                    </View>
-                    <View style={styles.vitalInput}>
-                      <Text style={styles.vitalLabel}>Heart Rate (bpm)</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={hrValue}
-                        onChangeText={setHrValue}
-                        onBlur={handleMetricsSubmit}
-                        placeholder="72"
-                        keyboardType="numeric"
-                        maxLength={3}
-                      />
-                    </View>
-                  </View>
-                </View>
-              )}
-
-              {/* Time Selection Section */}
-              {(action.id === "meal" ||
-                action.id === "rest" ||
-                action.id === "activity") && (
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>When</Text>
-                  <View style={styles.chipContainer}>
-                    {[
-                      { id: "now", label: "Now" },
-                      { id: "earlier", label: "Earlier" },
-                      { id: "scheduled", label: "Scheduled" },
-                    ].map((timeOption) => (
+        {/* Content */}
+        <View style={styles.contentWrapper}>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Options Section */}
+            {action.variants && action.variants.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Options</Text>
+                <View style={styles.chipContainer}>
+                  {action.variants.map((variant) => {
+                    const isSelected =
+                      selectedVariants && Array.isArray(selectedVariants)
+                        ? selectedVariants.includes(variant.id)
+                        : false;
+                    return (
                       <Animated.View
-                        key={timeOption.id}
-                        style={chipAnimatedStyle}
+                        key={variant.id}
+                        style={variantChipAnimatedStyle}
                       >
                         <TouchableOpacity
                           style={[
                             styles.chip,
-                            timeValue === timeOption.id && styles.chipSelected,
+                            isSelected && styles.chipSelected,
                           ]}
-                          onPress={() => {
-                            setTimeValue(timeOption.id as any);
-                            handleMetricsSubmit();
-                          }}
+                          onPress={() => handleVariantPress(variant.id)}
                           accessibilityRole="button"
-                          accessibilityState={{
-                            selected: timeValue === timeOption.id,
-                          }}
-                          accessibilityLabel={timeOption.label}
+                          accessibilityState={{ selected: isSelected }}
+                          accessibilityLabel={`${variant.label}, ${
+                            isSelected ? "selected" : "not selected"
+                          }`}
+                          testID={`${testID}-variant-${variant.id}`}
                         >
                           <Text
                             style={[
                               styles.chipText,
-                              timeValue === timeOption.id &&
-                                styles.chipTextSelected,
+                              isSelected && styles.chipTextSelected,
                             ]}
                           >
-                            {timeOption.label}
+                            {variant.label}
                           </Text>
+                          {isSelected && (
+                            <Ionicons
+                              name="checkmark"
+                              size={16}
+                              color={colors.primary}
+                              style={styles.chipIcon}
+                            />
+                          )}
                         </TouchableOpacity>
                       </Animated.View>
-                    ))}
+                    );
+                  })}
+                </View>
+                <Text style={styles.chipCaption}>
+                  {action.variants.length === 1
+                    ? "Choose one"
+                    : "Choose all that apply"}
+                </Text>
+              </View>
+            )}
+
+            {/* Pain Scale Section */}
+            {action.id === "pain" && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Pain Level</Text>
+                  <View style={styles.valueBadge}>
+                    <Text style={styles.valueBadgeText}>{painValue}/10</Text>
                   </View>
                 </View>
-              )}
-
-              {/* Notes Section */}
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Additional Notes</Text>
-                <View style={styles.notesContainer}>
-                  <TextInput
-                    style={styles.notesInput}
-                    value={localNotes}
-                    onChangeText={setLocalNotes}
-                    onBlur={handleNotesSubmit}
-                    placeholder={`Add notes about ${action.label.toLowerCase()}...`}
-                    multiline
-                    maxLength={200}
-                    textAlignVertical="top"
-                  />
-                  <Text style={styles.characterCount}>
-                    {localNotes.length}/200
-                  </Text>
+                <View style={styles.painScaleContainer}>
+                  {Array.from({ length: 11 }, (_, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.painScaleButton,
+                        painValue === index && styles.painScaleButtonSelected,
+                      ]}
+                      onPress={() => {
+                        setPainValue(index);
+                        handleMetricsSubmit();
+                      }}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: painValue === index }}
+                      accessibilityLabel={`Pain level ${index}`}
+                    >
+                      <Text
+                        style={[
+                          styles.painScaleText,
+                          painValue === index && styles.painScaleTextSelected,
+                        ]}
+                      >
+                        {index}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <View style={styles.painLabels}>
+                  <Text style={styles.painLabel}>No pain</Text>
+                  <Text style={styles.painLabel}>Severe</Text>
                 </View>
               </View>
-            </ScrollView>
-          </View>
+            )}
 
-          {/* Sticky Footer */}
-          <View style={styles.footerContainer}>
-            <StickyFooter
-              primaryLabel="Add to update"
-              onPrimaryPress={handleConfirm}
-              primaryDisabled={!hasSelections()}
-              secondaryLabel={hasSelections() ? "Clear" : undefined}
-              onSecondaryPress={hasSelections() ? handleClear : undefined}
-              contextPreview={getContextPreview()}
-              testID={`${testID}-footer`}
-            />
-          </View>
-        </BottomSheetView>
-      </KeyboardAvoidingView>
+            {/* Vitals Section */}
+            {action.id === "vitals" && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Vital Signs</Text>
+                <View style={styles.vitalsContainer}>
+                  <View style={styles.vitalInput}>
+                    <Text style={styles.vitalLabel}>Temperature (°C)</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={tempValue}
+                      onChangeText={setTempValue}
+                      onBlur={handleMetricsSubmit}
+                      placeholder="36.5"
+                      keyboardType="decimal-pad"
+                      maxLength={5}
+                    />
+                  </View>
+                  <View style={styles.vitalInput}>
+                    <Text style={styles.vitalLabel}>Blood Pressure</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={bpValue}
+                      onChangeText={setBpValue}
+                      onBlur={handleMetricsSubmit}
+                      placeholder="120/80"
+                      maxLength={10}
+                    />
+                  </View>
+                  <View style={styles.vitalInput}>
+                    <Text style={styles.vitalLabel}>Heart Rate (bpm)</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={hrValue}
+                      onChangeText={setHrValue}
+                      onBlur={handleMetricsSubmit}
+                      placeholder="72"
+                      keyboardType="numeric"
+                      maxLength={3}
+                    />
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Time Selection Section */}
+            {(action.id === "meal" ||
+              action.id === "rest" ||
+              action.id === "activity") && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>When</Text>
+                <View style={styles.chipContainer}>
+                  {[
+                    { id: "now", label: "Now" },
+                    { id: "earlier", label: "Earlier" },
+                    { id: "scheduled", label: "Scheduled" },
+                  ].map((timeOption) => (
+                    <Animated.View
+                      key={timeOption.id}
+                      style={timeChipAnimatedStyle}
+                    >
+                      <TouchableOpacity
+                        style={[
+                          styles.chip,
+                          timeValue === timeOption.id && styles.chipSelected,
+                        ]}
+                        onPress={() => handleTimePress(timeOption.id as any)}
+                        accessibilityRole="button"
+                        accessibilityState={{
+                          selected: timeValue === timeOption.id,
+                        }}
+                        accessibilityLabel={timeOption.label}
+                      >
+                        <Text
+                          style={[
+                            styles.chipText,
+                            timeValue === timeOption.id &&
+                              styles.chipTextSelected,
+                          ]}
+                        >
+                          {timeOption.label}
+                        </Text>
+                      </TouchableOpacity>
+                    </Animated.View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Notes Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Additional Notes</Text>
+              <View style={styles.notesContainer}>
+                <TextInput
+                  style={styles.notesInput}
+                  value={localNotes}
+                  onChangeText={setLocalNotes}
+                  onBlur={handleNotesSubmit}
+                  placeholder={`Add notes about ${action.label.toLowerCase()}...`}
+                  multiline
+                  maxLength={200}
+                  textAlignVertical="top"
+                  returnKeyType="done"
+                  blurOnSubmit={true}
+                  enablesReturnKeyAutomatically={true}
+                />
+                <Text style={styles.characterCount}>
+                  {localNotes.length}/200
+                </Text>
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+
+        {/* Sticky Footer */}
+        <View style={styles.footerContainer}>
+          <StickyFooter
+            primaryLabel="Add to update"
+            onPrimaryPress={handleConfirm}
+            primaryDisabled={!hasSelections()}
+            secondaryLabel={hasSelections() ? "Clear" : undefined}
+            onSecondaryPress={hasSelections() ? handleClear : undefined}
+            contextPreview={getContextPreview()}
+            testID={`${testID}-footer`}
+          />
+        </View>
+      </BottomSheetView>
     </BottomSheetModal>
   );
 };
@@ -553,9 +631,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing.md,
-  },
-  emoji: {
-    fontSize: 20,
   },
   titleContainer: {
     flex: 1,
@@ -624,8 +699,10 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    minHeight: 44,
+    paddingVertical: spacing.md, // Increased for better touch
+    minHeight: 48, // Larger touch target
+    minWidth: 60, // Ensure sufficient width
+    justifyContent: "center",
   },
   chipSelected: {
     backgroundColor: "#E6F6FD",
@@ -720,8 +797,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     fontSize: 16,
     color: colors.text,
-    minHeight: 80,
+    minHeight: 100, // Increased height for better UX
+    maxHeight: 150, // Prevent excessive growth
     textAlignVertical: "top",
+    // Ensure proper keyboard interaction
+    includeFontPadding: false,
+    textDecorationLine: "none",
   },
   characterCount: {
     fontSize: 12,

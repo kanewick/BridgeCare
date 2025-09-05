@@ -9,6 +9,7 @@ import {
   Platform,
   Keyboard,
 } from "react-native";
+import { useRoute } from "@react-navigation/native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -39,7 +40,16 @@ import {
   QuickAction,
 } from "../../data/quickActions";
 
+interface RouteParams {
+  residentId?: string;
+  preselectedAction?: string;
+  batchResidents?: string[];
+}
+
 export const StaffQuickLogScreen: React.FC = () => {
+  const route = useRoute();
+  const params = route.params as RouteParams | undefined;
+
   const { residents, activeResidentId, setActiveResident, addFeedItem } =
     useFeedStore();
 
@@ -62,6 +72,24 @@ export const StaffQuickLogScreen: React.FC = () => {
   const recentResidentIds = useMemo(() => {
     return residents.slice(0, 3).map((r) => r.id);
   }, [residents]);
+
+  // Handle navigation parameters
+  useEffect(() => {
+    if (params?.residentId && params.residentId !== activeResidentId) {
+      setActiveResident(params.residentId);
+    }
+
+    if (params?.preselectedAction) {
+      const action = getActionById(params.preselectedAction);
+      if (action) {
+        // Auto-select the action and open its bottom sheet
+        setTimeout(() => {
+          setBottomSheetAction(action);
+          setShowBottomSheet(true);
+        }, 300); // Small delay to let the screen settle
+      }
+    }
+  }, [params, activeResidentId, setActiveResident]);
 
   // Handle keyboard events
   useEffect(() => {
@@ -123,16 +151,35 @@ export const StaffQuickLogScreen: React.FC = () => {
 
       setSelectedActions((prev) => ({
         ...prev,
-        [actionId]: { variants },
+        [actionId]: {
+          variants: Array.isArray(variants) ? variants : [],
+          notes: "",
+        },
       }));
     } else {
-      // Already selected - check if we can cycle variants
+      // Already selected - for simpler UX, check if we should cycle or deselect
       const currentData = selectedActions[actionId];
-      const currentVariant = currentData.variants[0]; // First variant
+      const currentVariant = currentData?.variants?.[0]; // First variant
 
-      if (action.cycle && currentVariant) {
+      // For cycling actions, cycle through once then allow deselection
+      if (
+        action.cycle &&
+        currentVariant &&
+        action.variants &&
+        action.variants.length > 1
+      ) {
         const nextVariant = getNextCycleVariant(action, currentVariant);
-        if (nextVariant) {
+        // If we're back to the beginning of the cycle or no next variant, deselect
+        if (!nextVariant || nextVariant === action.cycle[0]) {
+          // Deselect instead of cycling back
+          setSelectedActions((prev) => {
+            const newState = { ...prev };
+            delete newState[actionId];
+            return newState;
+          });
+          return;
+        } else {
+          // Cycle to next variant
           setSelectedActions((prev) => ({
             ...prev,
             [actionId]: {
@@ -144,7 +191,7 @@ export const StaffQuickLogScreen: React.FC = () => {
         }
       }
 
-      // No cycling available or no current variant - remove selection
+      // Otherwise, deselect immediately for easier UX
       setSelectedActions((prev) => {
         const newState = { ...prev };
         delete newState[actionId];
@@ -357,6 +404,7 @@ export const StaffQuickLogScreen: React.FC = () => {
               ? `Adding update for ${selectedResident.name}`
               : "Fast updates for residents"
           }
+          showSettings={true}
         />
       </View>
       <GestureHandlerRootView style={{ flex: 1 }}>

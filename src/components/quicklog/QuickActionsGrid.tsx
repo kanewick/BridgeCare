@@ -16,6 +16,11 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { colors, radius, spacing, shadow, theme } from "../../theme";
+import {
+  QUICK_ACTIONS as CENTRAL_ACTIONS,
+  QuickAction as CentralQuickAction,
+} from "../../data/quickActions";
+import { IconDisplay } from "../IconDisplay";
 
 type QuickActionType =
   | "meal"
@@ -39,6 +44,7 @@ interface QuickAction {
   id: QuickActionType;
   label: string;
   emoji: string;
+  icon?: string;
   variants?: string[];
 }
 
@@ -54,93 +60,109 @@ const QUICK_ACTIONS: QuickAction[] = [
     id: "meal",
     label: "Meal",
     emoji: "🍽️",
+    icon: "restaurant-outline",
     variants: ["Breakfast", "Lunch", "Dinner", "Snack"],
   },
   {
     id: "activity",
     label: "Activity",
-    emoji: "🎯",
+    emoji: "🏃",
+    icon: "fitness-outline",
     variants: ["Walk", "Stretch", "Games", "Outing"],
   },
   {
     id: "meds",
     label: "Meds",
     emoji: "💊",
+    icon: "medical-outline",
     variants: ["Given", "Refused", "Missed"],
   },
   {
     id: "rest",
     label: "Rest",
     emoji: "😴",
+    icon: "bed-outline",
     variants: ["Nap", "Overnight"],
   },
   {
     id: "bathroom",
     label: "Bathroom",
     emoji: "🚻",
+    icon: "body-outline",
     variants: ["Toilet", "Continence change"],
   },
   {
     id: "hygiene",
     label: "Hygiene",
     emoji: "🧼",
+    icon: "brush-outline",
     variants: ["Shower", "Bath", "Teeth", "Hair"],
   },
   {
     id: "dressing",
     label: "Dressing",
     emoji: "👕",
+    icon: "person-outline",
   },
   {
     id: "mobility",
     label: "Mobility",
     emoji: "🚶",
+    icon: "walk-outline",
     variants: ["Independent", "Assisted", "Device"],
   },
   {
     id: "hydration",
     label: "Hydration",
     emoji: "💧",
+    icon: "water-outline",
   },
   {
     id: "mood",
     label: "Mood",
     emoji: "😊",
+    icon: "happy-outline",
     variants: ["Happy", "Calm", "Anxious", "Upset"],
   },
   {
     id: "vitals",
     label: "Vitals",
     emoji: "🩺",
+    icon: "pulse-outline",
     variants: ["Temp", "BP", "HR"],
   },
   {
     id: "pain",
     label: "Pain",
     emoji: "🩹",
+    icon: "alert-circle-outline",
     variants: ["0 - No pain", "1-3 - Mild", "4-6 - Moderate", "7-10 - Severe"],
   },
   {
     id: "social",
     label: "Social",
     emoji: "👥",
+    icon: "chatbubbles-outline",
     variants: ["Group", "One-to-one"],
   },
   {
     id: "family",
     label: "Family",
     emoji: "👨‍👩‍👧‍👦",
+    icon: "people-outline",
     variants: ["Call", "Visit"],
   },
   {
     id: "wound-care",
     label: "Wound Care",
     emoji: "🩹",
+    icon: "medical-outline",
   },
   {
     id: "photo",
     label: "Photo",
     emoji: "📸",
+    icon: "camera-outline",
   },
 ];
 
@@ -199,7 +221,12 @@ const ActionPill: React.FC<{
           action.variants ? "Long press for options" : undefined
         }
       >
-        <Text style={styles.pillEmoji}>{action.emoji}</Text>
+        <IconDisplay
+          emoji={action.emoji}
+          icon={action.icon}
+          size={16}
+          useIcons={true}
+        />
         <Text
           style={[styles.pillLabel, isSelected && styles.pillLabelSelected]}
         >
@@ -365,10 +392,6 @@ const styles = StyleSheet.create({
     backgroundColor: `${colors.primary}10`,
     borderColor: colors.primary,
     borderWidth: 2,
-  },
-  pillEmoji: {
-    fontSize: 24,
-    marginBottom: spacing.xs,
   },
   pillLabel: {
     ...theme.typography.bodyMedium,

@@ -6,7 +6,7 @@ import {
   StyleSheet,
   SafeAreaView,
 } from "react-native";
-import { CaretLeft } from "phosphor-react-native";
+import { CaretLeft, Gear } from "phosphor-react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useAppTheme } from "../store/themeStore";
 import { MessageNotificationIcon } from "./MessageNotificationIcon";
@@ -19,6 +19,7 @@ interface HeaderProps {
   showBack?: boolean;
   rightAction?: React.ReactNode;
   hideNotifications?: boolean; // Hide notification bell (for message screens)
+  showSettings?: boolean; // Show settings icon on the left
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -27,6 +28,7 @@ export const Header: React.FC<HeaderProps> = ({
   showBack = false,
   rightAction,
   hideNotifications = false,
+  showSettings = false,
 }) => {
   const navigation = useNavigation();
   const { effectiveTheme } = useAppTheme();
@@ -45,6 +47,10 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
 
+  const handleSettings = () => {
+    (navigation as any).navigate("Settings");
+  };
+
   return (
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: colors.background }]}
@@ -58,9 +64,18 @@ export const Header: React.FC<HeaderProps> = ({
           },
         ]}
       >
-        {/* Left: Back Button or Spacer */}
+        {/* Left: Settings, Back Button, or Spacer */}
         <View style={styles.leftSection}>
-          {showBack ? (
+          {showSettings ? (
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={handleSettings}
+              accessibilityRole="button"
+              accessibilityLabel="Settings"
+            >
+              <Gear size={24} color={colors.text} weight="regular" />
+            </TouchableOpacity>
+          ) : showBack ? (
             <TouchableOpacity
               style={styles.backButton}
               onPress={handleBack}

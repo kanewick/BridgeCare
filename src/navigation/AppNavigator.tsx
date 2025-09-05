@@ -19,6 +19,7 @@ export type RootStackParamList = {
   ResidentDetail: { residentId: string };
   ConversationScreen: { conversationId: string; conversationTitle: string };
   StaffMessages: undefined;
+  Settings: undefined;
 };
 
 // Stack navigators for each role
@@ -76,6 +77,14 @@ const StaffStackNavigator = () => {
       <RootStack.Screen
         name="ConversationScreen"
         component={FamilyMessageConversationScreen}
+        options={{
+          headerShown: false,
+          presentation: "modal",
+        }}
+      />
+      <RootStack.Screen
+        name="Settings"
+        component={SettingsScreen}
         options={{
           headerShown: false,
           presentation: "modal",

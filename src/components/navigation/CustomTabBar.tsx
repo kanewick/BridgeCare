@@ -40,6 +40,8 @@ const getIconName = (routeName: string): IconName => {
       return "Profile";
     case "Settings":
       return "Settings";
+    case "Care":
+      return "Care";
     // Family navigation icons
     case "Home":
       return "Home";

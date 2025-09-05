@@ -14,6 +14,7 @@ import {
   ChatCircle,
   Images,
   DotsThree,
+  HeartStraight,
 } from "phosphor-react-native";
 
 // Define a type for the icon names for better type safety
@@ -23,6 +24,7 @@ export type IconName =
   | "Residents"
   | "Profile"
   | "Settings"
+  | "Care"
   | "Home"
   | "Feed"
   | "ResidentProfile"
@@ -46,6 +48,7 @@ const iconMap: Record<IconName, React.FC<any>> = {
   Residents: Users,
   Profile: User,
   Settings: Gear,
+  Care: HeartStraight,
   // Family navigation icons
   Home: House,
   Feed: Heart,

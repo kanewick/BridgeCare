@@ -11,6 +11,11 @@ import { colors, radius, spacing, theme, shadow } from "../../theme";
 import { useContentContainerStyle } from "../../hooks/useTabBarHeight";
 import { Card } from "../../components/Card";
 import { Header } from "../../components/Header";
+import { StatCard } from "../../components/StatCard";
+import { ResidentStatusCard } from "../../components/ResidentStatusCard";
+import { CategoryRecents } from "../../components/CategoryRecents";
+import { IconDisplay } from "../../components/IconDisplay";
+import { QUICK_ACTIONS, getActionById } from "../../data/quickActions";
 import { useFeedStore } from "../../store/feedStore";
 
 export const StaffDashboardScreen: React.FC = () => {
@@ -60,45 +65,157 @@ export const StaffDashboardScreen: React.FC = () => {
     (navigation as any).navigate("StaffTabs", { screen: "QuickLog" });
   };
 
-  const typeLabels: Record<string, string> = {
-    meal: "🍽️ Meal",
-    activity: "🏃 Activity",
-    meds: "💊 Meds",
-    rest: "😴 Rest",
-    bathroom: "🚽 Bathroom",
-    hygiene: "🛁 Hygiene",
-    dressing: "👕 Dressing",
-    mobility: "🦽 Mobility",
-    photo: "📷 Photo",
-    note: "📝 Note",
+  const handleQuickAdd = (residentId: string, actionId: string) => {
+    setActiveResident(residentId);
+    // Navigate to Quick Log with resident and action preselected
+    (navigation as any).navigate("StaffTabs", {
+      screen: "QuickLog",
+      params: {
+        residentId: residentId,
+        preselectedAction: actionId,
+      },
+    });
   };
+
+  // Get current shift info (in real app, this would come from staff data/auth)
+  const getCurrentShift = () => {
+    const currentHour = new Date().getHours();
+    if (currentHour >= 6 && currentHour < 14) {
+      return { name: "Morning Shift", time: "6am – 2pm" };
+    } else if (currentHour >= 14 && currentHour < 22) {
+      return { name: "Evening Shift", time: "2pm – 10pm" };
+    } else {
+      return { name: "Night Shift", time: "10pm – 6am" };
+    }
+  };
+
+  const currentShift = getCurrentShift();
+
+  // Get action data for professional icons
+  const getActionData = (actionId: string) => {
+    return (
+      getActionById(actionId) || {
+        id: actionId,
+        label: actionId,
+        emoji: "📝",
+        category: "essentials" as const,
+      }
+    );
+  };
+
+  const typeLabels: Record<string, string> = {
+    meal: "Meal",
+    activity: "Activity",
+    meds: "Meds",
+    rest: "Rest",
+    bathroom: "Bathroom",
+    hygiene: "Hygiene",
+    dressing: "Dressing",
+    mobility: "Mobility",
+    photo: "Photo",
+    note: "Note",
+  };
+
+  // Type colors for stat indicators
+  const typeColors: Record<string, string> = {
+    meal: colors.secondary,
+    activity: "#10B981",
+    meds: "#8B5CF6",
+    rest: "#6366F1",
+    bathroom: "#F59E0B",
+    hygiene: "#06B6D4",
+    dressing: "#EC4899",
+    mobility: "#84CC16",
+    photo: "#3B82F6",
+    note: "#64748B",
+  };
+
+  // Generate category recents data
+  const categoryRecents = useMemo(() => {
+    const categories = [
+      "meal",
+      "meds",
+      "bathroom",
+      "rest",
+      "activity",
+      "hygiene",
+    ];
+    return categories
+      .map((category) => {
+        const categoryPosts = todayPosts.filter(
+          (post) => post.type === category
+        );
+        const lastPost = categoryPosts.sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )[0];
+
+        const actionData = getActionData(category);
+        return {
+          category: typeLabels[category] || category,
+          emoji: actionData.emoji,
+          icon: actionData.icon,
+          lastAction: lastPost
+            ? {
+                variant: lastPost.tags[0] || "Logged",
+                time: lastPost.createdAt,
+                residentName: residents.find(
+                  (r) => r.id === lastPost.residentId
+                )?.name,
+              }
+            : undefined,
+          totalToday: categoryPosts.length,
+        };
+      })
+      .filter(
+        (item) =>
+          item.totalToday > 0 ||
+          item.category === "Meal" ||
+          item.category === "Meds"
+      );
+  }, [todayPosts, residents, typeLabels]);
 
   return (
     <View style={styles.container}>
-      <Header title="Staff Dashboard" />
+      <Header
+        title="Staff Dashboard"
+        subtitle={`${currentShift.name} • ${currentShift.time}`}
+        showSettings={true}
+      />
       <ScrollView
         contentContainerStyle={[styles.content, contentContainerStyle]}
       >
         {/* Today's Stats */}
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>Updates Posted Today</Text>
+          <Text style={styles.sectionTitle}>Today's Stats</Text>
+          <Text style={styles.sectionSubtitle}>
+            Overview of care activities logged today
+          </Text>
           <View style={styles.statsGrid}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{stats.totalUpdates}</Text>
-              <Text style={styles.statLabel}>Total Updates</Text>
-            </View>
+            <StatCard
+              number={stats.totalUpdates}
+              label="Total Updates"
+              color={colors.primary}
+              subtitle="All activities"
+            />
 
             {Object.entries(stats.byType)
               .slice(0, 5)
               .map(([type, count]) => (
-                <View key={type} style={styles.statItem}>
-                  <Text style={styles.statNumber}>{count}</Text>
-                  <Text style={styles.statLabel}>
-                    {typeLabels[type] || type}
-                  </Text>
-                </View>
+                <StatCard
+                  key={type}
+                  number={count}
+                  label={typeLabels[type] || type}
+                  color={colors.text}
+                  indicatorColor={typeColors[type] || colors.primary}
+                />
               ))}
           </View>
+        </Card>
+
+        {/* Category Recents */}
+        <Card style={styles.section}>
+          <CategoryRecents recents={categoryRecents} />
         </Card>
 
         {/* Residents Overview */}
@@ -118,75 +235,22 @@ export const StaffDashboardScreen: React.FC = () => {
                   new Date(a.createdAt).getTime()
               )[0];
               const updateCount = residentUpdates.length;
-              const needsAttention = updateCount === 0;
 
               return (
-                <TouchableOpacity
+                <ResidentStatusCard
                   key={resident.id}
-                  style={[
-                    styles.residentCard,
-                    needsAttention && styles.residentCardAttention,
-                  ]}
+                  resident={resident}
+                  updateCount={updateCount}
+                  lastUpdate={lastUpdate}
+                  typeLabels={typeLabels}
                   onPress={() => {
                     // Navigate to resident detail screen
                     (navigation as any).navigate("ResidentDetail", {
                       residentId: resident.id,
                     });
                   }}
-                >
-                  <View style={styles.residentCardHeader}>
-                    <View style={styles.residentInfo}>
-                      <Text style={styles.residentName}>{resident.name}</Text>
-                      {resident.room && (
-                        <Text style={styles.residentRoom}>
-                          Room {resident.room}
-                        </Text>
-                      )}
-                    </View>
-                    <View style={styles.residentStats}>
-                      <Text
-                        style={[
-                          styles.updateCount,
-                          needsAttention && styles.updateCountAttention,
-                        ]}
-                      >
-                        {updateCount}
-                      </Text>
-                      <Text style={styles.updateCountLabel}>
-                        {updateCount === 1 ? "update" : "updates"}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.residentCardFooter}>
-                    {lastUpdate ? (
-                      <View style={styles.lastUpdateInfo}>
-                        <Text style={styles.lastUpdateType}>
-                          {typeLabels[lastUpdate.type]} •{" "}
-                          {new Date(lastUpdate.createdAt).toLocaleTimeString(
-                            [],
-                            {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            }
-                          )}
-                        </Text>
-                      </View>
-                    ) : (
-                      <Text style={styles.noUpdateText}>No updates today</Text>
-                    )}
-
-                    <TouchableOpacity
-                      style={styles.quickAddButton}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleResidentTap(resident.id);
-                      }}
-                    >
-                      <Text style={styles.quickAddText}>+ Add</Text>
-                    </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
+                  onQuickAdd={handleQuickAdd}
+                />
               );
             })}
           </View>
@@ -195,11 +259,17 @@ export const StaffDashboardScreen: React.FC = () => {
         {/* Quick Actions */}
         <Card style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <Text style={styles.sectionSubtitle}>
+            Log activities for residents
+          </Text>
+
           <TouchableOpacity
             style={styles.primaryButton}
             onPress={handleGoToQuickLog}
+            accessibilityLabel="Go to Quick Log"
+            accessibilityHint="Opens the quick logging screen"
           >
-            <Text style={styles.primaryButtonText}>Go to Quick Log</Text>
+            <Text style={styles.primaryButtonText}>Start Logging</Text>
           </TouchableOpacity>
         </Card>
 
@@ -371,22 +441,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: spacing.md,
   },
-  statItem: {
-    alignItems: "center",
-    minWidth: "30%",
-    flex: 1,
-  },
-  statNumber: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: colors.primary,
-    lineHeight: 32,
-  },
-  statLabel: {
-    ...theme.typography.body,
-    color: colors.textMuted,
-    textAlign: "center",
-  },
   breakdownContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -413,91 +467,9 @@ const styles = StyleSheet.create({
   residentsGrid: {
     gap: spacing.sm,
   },
-  residentCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    ...shadow.sm,
-  },
-  residentCardAttention: {
-    borderLeftWidth: 4,
-    borderLeftColor: colors.warning,
-    backgroundColor: colors.warningSoft,
-  },
-  residentCardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: spacing.sm,
-  },
-  residentInfo: {
-    flex: 1,
-  },
-  residentName: {
-    ...theme.typography.bodySmall,
-    color: colors.text,
-    fontWeight: "600",
-    marginBottom: spacing.xs,
-  },
-  residentRoom: {
-    ...theme.typography.caption,
-    color: colors.textMuted,
-  },
-  residentStats: {
-    alignItems: "center",
-    marginLeft: spacing.md,
-  },
-  updateCount: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: colors.primary,
-    lineHeight: 24,
-  },
-  updateCountAttention: {
-    color: colors.warning,
-  },
-  updateCountLabel: {
-    ...theme.typography.caption,
-    color: colors.textMuted,
-    textAlign: "center",
-  },
-  residentCardFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-  },
-  lastUpdateInfo: {
-    flex: 1,
-  },
-  lastUpdateType: {
-    ...theme.typography.caption,
-    color: colors.textMuted,
-    fontWeight: "500",
-  },
-  noUpdateText: {
-    ...theme.typography.caption,
-    color: colors.warning,
-    fontWeight: "500",
-    fontStyle: "italic",
-  },
-  quickAddButton: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    marginLeft: spacing.sm,
-  },
-  quickAddText: {
-    ...theme.typography.caption,
-    color: colors.card,
-    fontWeight: "600",
-  },
+
   primaryButton: {
+    flex: 1,
     backgroundColor: colors.primary,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,

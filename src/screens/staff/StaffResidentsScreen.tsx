@@ -76,6 +76,7 @@ export const StaffResidentsScreen: React.FC = () => {
           subtitle={`${residents.length} resident${
             residents.length !== 1 ? "s" : ""
           } in care`}
+          showSettings={true}
         />
 
         <ScrollView

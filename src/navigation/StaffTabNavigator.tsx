@@ -7,7 +7,7 @@ import { StaffDashboardScreen } from "../screens/staff/StaffDashboardScreen";
 import { StaffQuickLogScreen } from "../screens/staff/StaffQuickLogScreen";
 import { StaffResidentsScreen } from "../screens/staff/StaffResidentsScreen";
 import { StaffProfileScreen } from "../screens/staff/StaffProfileScreen";
-import { SettingsScreen } from "../screens/shared/SettingsScreen";
+import { CareScreen } from "../screens/staff/CareScreen";
 
 // Define the type for the tab navigator's screen list for type safety
 export type StaffTabParamList = {
@@ -15,7 +15,7 @@ export type StaffTabParamList = {
   Residents: undefined;
   QuickLog: undefined;
   Profile: undefined;
-  Settings: undefined;
+  Care: undefined;
 };
 
 const Tab = createBottomTabNavigator<StaffTabParamList>();
@@ -54,9 +54,9 @@ export const StaffTabNavigator = () => {
         options={{ title: "Profile" }}
       />
       <Tab.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{ title: "Settings" }}
+        name="Care"
+        component={CareScreen}
+        options={{ title: "Care" }}
       />
     </Tab.Navigator>
   );

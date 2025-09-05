@@ -8,6 +8,7 @@ export type QuickAction = {
   id: string;
   label: string;
   emoji: string;
+  icon?: string; // Ionicon name for professional alternative
   category: "essentials" | "care" | "wellbeing" | "clinical";
   variants?: Variant[];
   cycle?: string[]; // order to cycle on tap
@@ -20,6 +21,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     id: "meal",
     label: "Meal",
     emoji: "🍽️",
+    icon: "restaurant-outline",
     category: "essentials",
     variants: [
       { id: "breakfast", label: "Breakfast", default: true },
@@ -34,6 +36,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     id: "meds",
     label: "Meds",
     emoji: "💊",
+    icon: "medical-outline",
     category: "essentials",
     variants: [
       { id: "given", label: "Given", default: true },
@@ -46,6 +49,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     id: "bathroom",
     label: "Bathroom",
     emoji: "🚻",
+    icon: "body-outline",
     category: "essentials",
     variants: [
       { id: "toilet", label: "Toilet", default: true },
@@ -57,6 +61,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     id: "rest",
     label: "Rest",
     emoji: "😴",
+    icon: "bed-outline",
     category: "essentials",
     variants: [
       { id: "nap", label: "Nap", default: true },
@@ -67,6 +72,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     id: "hydration",
     label: "Hydration",
     emoji: "💧",
+    icon: "water-outline",
     category: "essentials",
     variants: [
       { id: "water", label: "Water", default: true },
@@ -80,6 +86,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     id: "hygiene",
     label: "Hygiene",
     emoji: "🧼",
+    icon: "brush-outline",
     category: "care",
     variants: [
       { id: "shower", label: "Shower", default: true },
@@ -93,6 +100,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     id: "dressing",
     label: "Dressing",
     emoji: "👕",
+    icon: "person-outline",
     category: "care",
     variants: [
       { id: "independent", label: "Independent", default: true },
@@ -103,6 +111,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     id: "mobility",
     label: "Mobility",
     emoji: "🚶",
+    icon: "walk-outline",
     category: "care",
     variants: [
       { id: "independent", label: "Independent", default: true },
@@ -114,6 +123,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     id: "wound-care",
     label: "Wound Care",
     emoji: "🩹",
+    icon: "medical-outline",
     category: "care",
     variants: [
       { id: "check", label: "Check", default: true },
@@ -126,7 +136,8 @@ export const QUICK_ACTIONS: QuickAction[] = [
   {
     id: "activity",
     label: "Activity",
-    emoji: "🎯",
+    emoji: "🏃",
+    icon: "fitness-outline",
     category: "wellbeing",
     variants: [
       { id: "walk", label: "Walk", default: true },
@@ -139,6 +150,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     id: "mood",
     label: "Mood",
     emoji: "🙂",
+    icon: "happy-outline",
     category: "wellbeing",
     variants: [
       { id: "happy", label: "Happy", default: true },
@@ -152,6 +164,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     id: "social",
     label: "Social",
     emoji: "🗣️",
+    icon: "chatbubbles-outline",
     category: "wellbeing",
     variants: [
       { id: "group", label: "Group", default: true },
@@ -163,6 +176,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     id: "family",
     label: "Family",
     emoji: "👪",
+    icon: "people-outline",
     category: "wellbeing",
     variants: [
       { id: "call", label: "Call", default: true },
@@ -176,6 +190,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     id: "vitals",
     label: "Vitals",
     emoji: "🩺",
+    icon: "pulse-outline",
     category: "clinical",
     variants: [
       { id: "temp", label: "Temp" },
@@ -187,6 +202,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     id: "pain",
     label: "Pain",
     emoji: "❤️‍🩹",
+    icon: "alert-circle-outline",
     category: "clinical",
     variants: [
       { id: "pain-0", label: "0 - No pain", default: true },
@@ -199,6 +215,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     id: "photo",
     label: "Photo",
     emoji: "📷",
+    icon: "camera-outline",
     category: "clinical",
     consentGate: "photo",
   },
