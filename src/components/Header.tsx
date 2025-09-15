@@ -20,6 +20,7 @@ interface HeaderProps {
   rightAction?: React.ReactNode;
   hideNotifications?: boolean; // Hide notification bell (for message screens)
   showSettings?: boolean; // Show settings icon on the left
+  onPress?: () => void; // Make header clickable
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -29,6 +30,7 @@ export const Header: React.FC<HeaderProps> = ({
   rightAction,
   hideNotifications = false,
   showSettings = false,
+  onPress,
 }) => {
   const navigation = useNavigation();
   const { effectiveTheme } = useAppTheme();
@@ -90,18 +92,38 @@ export const Header: React.FC<HeaderProps> = ({
         </View>
 
         {/* Center: Title and Subtitle */}
-        <View style={styles.titleContainer}>
-          <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-          {subtitle ? (
-            <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-              {subtitle}
-            </Text>
-          ) : currentUser ? (
-            <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-              {currentUser.name}
-            </Text>
-          ) : null}
-        </View>
+        {onPress ? (
+          <TouchableOpacity
+            style={styles.titleContainer}
+            onPress={onPress}
+            accessibilityRole="button"
+            accessibilityLabel={`Select resident: ${subtitle || title}`}
+          >
+            <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+            {subtitle ? (
+              <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+                {subtitle}
+              </Text>
+            ) : currentUser ? (
+              <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+                {currentUser.name}
+              </Text>
+            ) : null}
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.titleContainer}>
+            <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+            {subtitle ? (
+              <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+                {subtitle}
+              </Text>
+            ) : currentUser ? (
+              <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+                {currentUser.name}
+              </Text>
+            ) : null}
+          </View>
+        )}
 
         {/* Right: Custom Action, Message Icon for Staff/Family, or Spacer */}
         <View style={styles.rightSection}>

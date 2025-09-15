@@ -102,8 +102,12 @@ export const ResidentPicker: React.FC<ResidentPickerProps> = ({
   recentResidentIds = [],
   testID = "resident-picker",
 }) => {
+  const [isMinimized, setIsMinimized] = useState(false);
   const [showAllResidents, setShowAllResidents] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Get selected resident
+  const selectedResident = residents.find((r) => r.id === selectedResidentId);
 
   // Get recent residents (last 5)
   const recentResidents = recentResidentIds
@@ -128,7 +132,10 @@ export const ResidentPicker: React.FC<ResidentPickerProps> = ({
     <ResidentChip
       resident={item}
       isSelected={selectedResidentId === item.id}
-      onPress={() => onSelectResident(item.id)}
+      onPress={() => {
+        onSelectResident(item.id);
+        setIsMinimized(true);
+      }}
       testID={`${testID}-chip-recent-${item.id}`}
     />
   );
@@ -137,99 +144,144 @@ export const ResidentPicker: React.FC<ResidentPickerProps> = ({
     <ResidentChip
       resident={item}
       isSelected={selectedResidentId === item.id}
-      onPress={() => onSelectResident(item.id)}
+      onPress={() => {
+        onSelectResident(item.id);
+        setIsMinimized(true);
+      }}
       testID={`${testID}-chip-all-${item.id}`}
     />
   );
 
   return (
-    <View style={styles.container} testID={testID}>
-      <Text style={styles.sectionTitle}>Select Resident</Text>
-
-      {/* Recent Residents */}
-      {recentResidents.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.subsectionTitle}>Recent</Text>
-          <FlatList
-            data={recentResidents}
-            renderItem={renderRecentResident}
-            keyExtractor={(item) => `recent-${item.id}`}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalList}
-            ItemSeparatorComponent={() => <View style={styles.chipSeparator} />}
-          />
-        </View>
+    <View
+      style={[styles.container, isMinimized && styles.containerMinimized]}
+      testID={testID}
+    >
+      {/* Minimized view - show only blue chip */}
+      {isMinimized && selectedResident ? (
+        <TouchableOpacity
+          style={styles.minimizedContent}
+          onPress={() => setIsMinimized(false)}
+          testID={`${testID}-selected-chip`}
+        >
+          <View style={styles.minimizedChip}>
+            <Text style={styles.minimizedChipText}>
+              {selectedResident.name}
+              {selectedResident.room && ` • Room ${selectedResident.room}`}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      ) : (
+        <>
+          {/* Header with minimize/expand toggle */}
+          <TouchableOpacity
+            style={styles.header}
+            onPress={() => setIsMinimized(!isMinimized)}
+            testID={`${testID}-toggle`}
+            accessibilityRole="button"
+            accessibilityLabel={`${
+              isMinimized ? "Expand" : "Minimize"
+            } resident selection`}
+          >
+            <View style={styles.headerContent}>
+              <Text style={styles.sectionTitle}>Select Resident</Text>
+            </View>
+            <Ionicons name="chevron-up" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
+        </>
       )}
 
-      {/* All Residents Section */}
-      <View style={styles.section}>
-        <TouchableOpacity
-          style={styles.allResidentsHeader}
-          onPress={() => setShowAllResidents(!showAllResidents)}
-          testID={`${testID}-toggle-all`}
-          accessibilityRole="button"
-          accessibilityLabel={`${
-            showAllResidents ? "Hide" : "Show"
-          } all residents`}
-        >
-          <Text style={styles.subsectionTitle}>All Residents</Text>
-          <Ionicons
-            name={showAllResidents ? "chevron-up" : "chevron-down"}
-            size={20}
-            color={colors.textMuted}
-          />
-        </TouchableOpacity>
+      {/* Expanded view - show all residents */}
+      {!isMinimized && (
+        <>
+          {/* Recent Residents */}
+          {recentResidents.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.subsectionTitle}>Recent</Text>
+              <FlatList
+                data={recentResidents}
+                renderItem={renderRecentResident}
+                keyExtractor={(item) => `recent-${item.id}`}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.horizontalList}
+                ItemSeparatorComponent={() => (
+                  <View style={styles.chipSeparator} />
+                )}
+              />
+            </View>
+          )}
 
-        {showAllResidents && (
-          <>
-            {/* Search Bar */}
-            <View style={styles.searchContainer}>
+          {/* All Residents Section */}
+          <View style={styles.section}>
+            <TouchableOpacity
+              style={styles.allResidentsHeader}
+              onPress={() => setShowAllResidents(!showAllResidents)}
+              testID={`${testID}-toggle-all`}
+              accessibilityRole="button"
+              accessibilityLabel={`${
+                showAllResidents ? "Hide" : "Show"
+              } all residents`}
+            >
+              <Text style={styles.subsectionTitle}>All Residents</Text>
               <Ionicons
-                name="search"
-                size={16}
+                name={showAllResidents ? "chevron-up" : "chevron-down"}
+                size={20}
                 color={colors.textMuted}
-                style={styles.searchIcon}
               />
-              <TextInput
-                style={styles.searchInput}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholder="Search residents..."
-                placeholderTextColor={colors.textFaint}
-                testID={`${testID}-search`}
-                accessibilityLabel="Search residents"
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity
-                  onPress={() => setSearchQuery("")}
-                  style={styles.clearButton}
-                  testID={`${testID}-clear-search`}
-                >
+            </TouchableOpacity>
+
+            {showAllResidents && (
+              <>
+                {/* Search Bar */}
+                <View style={styles.searchContainer}>
                   <Ionicons
-                    name="close-circle"
+                    name="search"
                     size={16}
                     color={colors.textMuted}
+                    style={styles.searchIcon}
                   />
-                </TouchableOpacity>
-              )}
-            </View>
+                  <TextInput
+                    style={styles.searchInput}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    placeholder="Search residents..."
+                    placeholderTextColor={colors.textFaint}
+                    testID={`${testID}-search`}
+                    accessibilityLabel="Search residents"
+                  />
+                  {searchQuery.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => setSearchQuery("")}
+                      style={styles.clearButton}
+                      testID={`${testID}-clear-search`}
+                    >
+                      <Ionicons
+                        name="close-circle"
+                        size={16}
+                        color={colors.textMuted}
+                      />
+                    </TouchableOpacity>
+                  )}
+                </View>
 
-            {/* All Residents Grid */}
-            <FlatList
-              data={filteredResidents}
-              renderItem={renderAllResident}
-              keyExtractor={(item) => `all-${item.id}`}
-              numColumns={1}
-              scrollEnabled={false}
-              contentContainerStyle={styles.verticalList}
-              ItemSeparatorComponent={() => (
-                <View style={styles.verticalSeparator} />
-              )}
-            />
-          </>
-        )}
-      </View>
+                {/* All Residents Grid */}
+                <FlatList
+                  data={filteredResidents}
+                  renderItem={renderAllResident}
+                  keyExtractor={(item) => `all-${item.id}`}
+                  numColumns={1}
+                  scrollEnabled={false}
+                  contentContainerStyle={styles.verticalList}
+                  ItemSeparatorComponent={() => (
+                    <View style={styles.verticalSeparator} />
+                  )}
+                />
+              </>
+            )}
+          </View>
+        </>
+      )}
     </View>
   );
 };
@@ -244,10 +296,57 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     ...shadow.sm,
   },
+  containerMinimized: {
+    padding: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  headerMinimized: {
+    paddingVertical: 2,
+    marginBottom: 0,
+  },
+  headerContent: {
+    flex: 1,
+  },
+  roomText: {
+    ...theme.typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  roomTextMinimized: {
+    fontSize: 12,
+    marginTop: 1,
+  },
+  minimizedContent: {
+    // No margin needed since it's the only content
+  },
+  minimizedChip: {
+    backgroundColor: colors.primarySoft,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  minimizedChipText: {
+    ...theme.typography.captionMedium,
+    color: colors.primary,
+    textAlign: "center",
+  },
   sectionTitle: {
     ...theme.typography.sectionTitle,
     color: colors.text,
-    marginBottom: spacing.md,
+    marginBottom: 0,
+  },
+  sectionTitleMinimized: {
+    fontSize: 16,
+    fontWeight: "600",
   },
   section: {
     marginBottom: spacing.md,

@@ -32,7 +32,7 @@ export type SelectedState = {
 
 interface ActionTileProps {
   action: QuickAction;
-  selected: SelectedState;
+  selected?: SelectedState;
   onToggle: (id: string) => void;
   onOpen: (id: string) => void;
   disabled?: boolean;
@@ -48,8 +48,9 @@ export const ActionTile: React.FC<ActionTileProps> = ({
   testID = `action-tile-${action.id}`,
 }) => {
   const scaleAnim = useSharedValue(1);
-  const isSelected = Boolean(selected[action.id]);
-  const selectedData = selected[action.id];
+  const safeSelected = selected || {};
+  const isSelected = Boolean(safeSelected[action.id]);
+  const selectedData = safeSelected[action.id];
   const variantCount = selectedData?.variants?.length || 0;
 
   const handlePress = async () => {
