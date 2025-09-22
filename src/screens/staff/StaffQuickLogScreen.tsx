@@ -1,25 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useRoute } from "@react-navigation/native";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
-import { colors, spacing, theme } from "../../theme";
+import { colors, spacing, radius, theme } from "../../theme";
 import { Header } from "../../components/Header";
-import { ResidentPickerModal } from "../../components/quicklog/ResidentPickerModal";
 import { ActivitiesTab } from "../../components/quicklog/ActivitiesTab";
-import { ChecklistsTab } from "../../components/quicklog/ChecklistsTab";
-import { ShiftJournalTab } from "../../components/quicklog/ShiftJournalTab";
-import { LearningTab } from "../../components/quicklog/LearningTab";
 import { useFeedStore } from "../../store/feedStore";
-
-type QuickLogTabName = "activities" | "checklists" | "journal" | "learning";
-
-const tabs: { name: QuickLogTabName; label: string }[] = [
-  { name: "activities", label: "Activities" },
-  { name: "checklists", label: "Checklists" },
-  { name: "journal", label: "Journal" },
-  { name: "learning", label: "Learning" },
-];
 
 interface RouteParams {
   residentId?: string;
@@ -32,27 +17,12 @@ export const StaffQuickLogScreen: React.FC = () => {
   const params = route.params as RouteParams | undefined;
 
   const { residents, activeResidentId, setActiveResident } = useFeedStore();
-
-  // Recent residents (for resident picker)
-  const recentResidentIds = React.useMemo(() => {
-    return residents.slice(0, 3).map((r) => r.id);
-  }, [residents]);
-
-  // Tab state
-  const [activeTab, setActiveTab] = useState<QuickLogTabName>("activities");
-
-  // Modal state
   const [showResidentPicker, setShowResidentPicker] = useState(false);
 
   // Handle navigation parameters
   useEffect(() => {
     if (params?.residentId && params.residentId !== activeResidentId) {
       setActiveResident(params.residentId);
-    }
-
-    // If there's a preselected action, ensure we're on the activities tab
-    if (params?.preselectedAction) {
-      setActiveTab("activities");
     }
   }, [params, activeResidentId, setActiveResident]);
 
@@ -61,112 +31,61 @@ export const StaffQuickLogScreen: React.FC = () => {
 
   const handleResidentSelect = (residentId: string) => {
     setActiveResident(residentId);
+    setShowResidentPicker(false);
   };
 
   const handleHeaderPress = () => {
     setShowResidentPicker(true);
   };
 
-  const handleTabChange = (tab: QuickLogTabName) => {
-    setActiveTab(tab);
-  };
-
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case "activities":
-        return (
-          <ActivitiesTab
-            residentId={activeResidentId}
-            testID="activities-tab-content"
-          />
-        );
-      case "checklists":
-        return (
-          <ChecklistsTab
-            residentId={activeResidentId}
-            testID="checklists-tab-content"
-          />
-        );
-      case "journal":
-        return (
-          <ShiftJournalTab
-            residentId={activeResidentId}
-            testID="journal-tab-content"
-          />
-        );
-      case "learning":
-        return <LearningTab testID="learning-tab-content" />;
-      default:
-        return null;
-    }
-  };
-
-  // Main render function
   return (
     <View style={styles.container}>
-      <View style={styles.headerWrapper}>
-        <Header
-          title="Quick Log"
-          subtitle={
-            selectedResident
-              ? `${selectedResident.name} • ${
-                  activeTab.charAt(0).toUpperCase() + activeTab.slice(1)
-                }`
-              : "Select a resident to get started"
-          }
-          showSettings={true}
-          onPress={handleHeaderPress}
-        />
-      </View>
-
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <BottomSheetModalProvider>
-          <View style={styles.content}>
-            {/* Custom Top Tab Bar */}
-            <View style={styles.tabBar}>
-              {tabs.map((tab) => (
-                <TouchableOpacity
-                  key={tab.name}
-                  style={[
-                    styles.tabButton,
-                    activeTab === tab.name && styles.tabButtonActive,
-                  ]}
-                  onPress={() => handleTabChange(tab.name)}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: activeTab === tab.name }}
-                  accessibilityLabel={`${tab.label} tab`}
-                >
-                  <Text
-                    style={[
-                      styles.tabLabel,
-                      activeTab === tab.name && styles.tabLabelActive,
-                    ]}
-                  >
-                    {tab.label}
-                  </Text>
-                  {activeTab === tab.name && (
-                    <View style={styles.tabIndicator} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Tab Content */}
-            <View style={styles.tabContent}>{renderTabContent()}</View>
-          </View>
-        </BottomSheetModalProvider>
-      </GestureHandlerRootView>
-
-      {/* Resident Picker Modal */}
-      <ResidentPickerModal
-        visible={showResidentPicker}
-        onClose={() => setShowResidentPicker(false)}
-        residents={residents}
-        selectedResidentId={activeResidentId}
-        onSelectResident={handleResidentSelect}
-        recentResidentIds={recentResidentIds}
-        testID="quick-log-resident-picker-modal"
+      <Header
+        title="Quick Log"
+        subtitle={
+          selectedResident
+            ? selectedResident.name
+            : "Select a resident to get started"
+        }
+        showSettings={true}
+        onPress={handleHeaderPress}
       />
+
+      <ActivitiesTab
+        residentId={activeResidentId}
+        testID="activities-tab-content"
+      />
+
+      {/* Simple Resident Picker */}
+      {showResidentPicker && (
+        <View style={styles.residentPickerOverlay}>
+          <View style={styles.residentPickerModal}>
+            <Text style={styles.modalTitle}>Select Resident</Text>
+            {residents.map((resident) => (
+              <TouchableOpacity
+                key={resident.id}
+                style={[
+                  styles.residentOption,
+                  activeResidentId === resident.id &&
+                    styles.residentOptionSelected,
+                ]}
+                onPress={() => handleResidentSelect(resident.id)}
+              >
+                <Text style={styles.residentOptionText}>{resident.name}</Text>
+                {resident.room && (
+                  <Text style={styles.residentRoom}>Room {resident.room}</Text>
+                )}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowResidentPicker(false)}
+            >
+              <Text style={styles.closeButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -176,52 +95,63 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
-  headerWrapper: {
-    backgroundColor: colors.card,
-    paddingBottom: 8,
-  },
-  content: {
-    flex: 1,
-  },
-  tabBar: {
-    flexDirection: "row",
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingHorizontal: spacing.md,
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-    minHeight: 48,
-  },
-  tabButtonActive: {
-    // Active tab styling handled by indicator
-  },
-  tabLabel: {
-    ...theme.typography.bodyMedium,
-    fontWeight: "500",
-    color: colors.textMuted,
-    fontSize: 14,
-  },
-  tabLabelActive: {
-    fontWeight: "600",
-    color: colors.primary,
-  },
-  tabIndicator: {
+  residentPickerOverlay: {
     position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
     bottom: 0,
-    left: spacing.sm,
-    right: spacing.sm,
-    height: 3,
-    backgroundColor: colors.primary,
-    borderRadius: 2,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: spacing.lg,
   },
-  tabContent: {
-    flex: 1,
+  residentPickerModal: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    width: "100%",
+    maxWidth: 400,
+    maxHeight: "80%",
+  },
+  modalTitle: {
+    ...theme.typography.heading,
+    color: colors.text,
+    marginBottom: spacing.lg,
+    textAlign: "center",
+  },
+  residentOption: {
+    padding: spacing.md,
+    borderRadius: radius.md,
+    marginBottom: spacing.sm,
+    backgroundColor: colors.bg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  residentOptionSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  residentOptionText: {
+    ...theme.typography.body,
+    color: colors.text,
+    fontWeight: "600",
+  },
+  residentRoom: {
+    ...theme.typography.bodySmall,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+  },
+  closeButton: {
+    marginTop: spacing.lg,
+    padding: spacing.md,
+    backgroundColor: colors.border,
+    borderRadius: radius.md,
+    alignItems: "center",
+  },
+  closeButtonText: {
+    ...theme.typography.bodyMedium,
+    color: colors.text,
+    fontWeight: "600",
   },
 });

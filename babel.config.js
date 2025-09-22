@@ -3,8 +3,7 @@ module.exports = function (api) {
   return {
     presets: ["babel-preset-expo"],
     plugins: [
-      // other plugins (if any) go above
-      "react-native-reanimated/plugin", // must be last
+      // Reanimated plugin is included in babel-preset-expo for Expo SDK 54
     ],
   };
 };

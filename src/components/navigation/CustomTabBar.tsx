@@ -205,6 +205,9 @@ const FloatingActionButton: React.FC<FABProps> = ({
   const scale = useSharedValue(1);
   const rotation = useSharedValue(0);
 
+  // Don't access .value during render - this causes the frozen object error
+  // console.log('FAB component rendering');
+
   React.useEffect(() => {
     rotation.value = withSpring(isFocused ? 45 : 0, {
       damping: 15,

@@ -15,7 +15,6 @@ import { StatCard } from "../../components/StatCard";
 import { ResidentStatusCard } from "../../components/ResidentStatusCard";
 import { CategoryRecents } from "../../components/CategoryRecents";
 import { IconDisplay } from "../../components/IconDisplay";
-import { QUICK_ACTIONS, getActionById } from "../../data/quickActions";
 import { useFeedStore } from "../../store/feedStore";
 
 export const StaffDashboardScreen: React.FC = () => {
@@ -78,7 +77,7 @@ export const StaffDashboardScreen: React.FC = () => {
   };
 
   // Get current shift info (in real app, this would come from staff data/auth)
-  const getCurrentShift = () => {
+  const getCurrentShiftInfo = () => {
     const currentHour = new Date().getHours();
     if (currentHour >= 6 && currentHour < 14) {
       return { name: "Morning Shift", time: "6am – 2pm" };
@@ -89,16 +88,62 @@ export const StaffDashboardScreen: React.FC = () => {
     }
   };
 
+  // Simple current shift calculation
+  const getCurrentShift = (): "morning" | "afternoon" | "evening" | "night" => {
+    const hour = new Date().getHours();
+    if (hour >= 6 && hour < 12) return "morning";
+    if (hour >= 12 && hour < 18) return "afternoon";
+    if (hour >= 18 && hour < 24) return "evening";
+    return "night";
+  };
+
   const currentShift = getCurrentShift();
 
-  // Get action data for professional icons
+  // Simple action data for professional icons
   const getActionData = (actionId: string) => {
+    const actionMap: Record<
+      string,
+      { id: string; label: string; emoji: string; icon: string }
+    > = {
+      meal: {
+        id: "meal",
+        label: "Meal",
+        emoji: "🍽️",
+        icon: "restaurant-outline",
+      },
+      meds: {
+        id: "meds",
+        label: "Medication",
+        emoji: "💊",
+        icon: "medical-outline",
+      },
+      activity: {
+        id: "activity",
+        label: "Activity",
+        emoji: "🏃",
+        icon: "walk-outline",
+      },
+      rest: { id: "rest", label: "Rest", emoji: "😴", icon: "bed-outline" },
+      bathroom: {
+        id: "bathroom",
+        label: "Bathroom",
+        emoji: "🚻",
+        icon: "water-outline",
+      },
+      hygiene: {
+        id: "hygiene",
+        label: "Hygiene",
+        emoji: "🧼",
+        icon: "sparkles-outline",
+      },
+    };
+
     return (
-      getActionById(actionId) || {
+      actionMap[actionId] || {
         id: actionId,
         label: actionId,
         emoji: "📝",
-        category: "essentials" as const,
+        icon: "document-outline",
       }
     );
   };
@@ -179,7 +224,9 @@ export const StaffDashboardScreen: React.FC = () => {
     <View style={styles.container}>
       <Header
         title="Staff Dashboard"
-        subtitle={`${currentShift.name} • ${currentShift.time}`}
+        subtitle={`${getCurrentShiftInfo().name} • ${
+          getCurrentShiftInfo().time
+        }`}
         showSettings={true}
       />
       <ScrollView

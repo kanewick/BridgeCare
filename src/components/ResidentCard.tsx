@@ -30,10 +30,10 @@ export const ResidentCard: React.FC<ResidentCardProps> = ({
   onPress,
   status = "active",
 }) => {
-  const scaleAnim = React.useRef(new Animated.Value(1)).current;
+  const scaleAnim = React.useRef(new Animated.Value(1));
 
   const handlePressIn = () => {
-    Animated.spring(scaleAnim, {
+    Animated.spring(scaleAnim.current, {
       toValue: 0.98,
       useNativeDriver: true,
       tension: 150,
@@ -42,7 +42,7 @@ export const ResidentCard: React.FC<ResidentCardProps> = ({
   };
 
   const handlePressOut = () => {
-    Animated.spring(scaleAnim, {
+    Animated.spring(scaleAnim.current, {
       toValue: 1,
       useNativeDriver: true,
       tension: 150,
@@ -86,7 +86,7 @@ export const ResidentCard: React.FC<ResidentCardProps> = ({
       style={[
         styles.card,
         isSelected && styles.selectedCard,
-        { transform: [{ scale: scaleAnim }] },
+        { transform: [{ scale: scaleAnim.current }] },
       ]}
     >
       <TouchableOpacity

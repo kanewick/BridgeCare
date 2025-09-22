@@ -1,242 +1,174 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Keyboard,
+  TextInput,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Modal,
 } from "react-native";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from "react-native-reanimated";
-import { colors } from "../../theme";
-import { RecentsRow, RecentAction } from "./RecentsRow";
-import { NoteField } from "./NoteField";
-import { PhotoPicker } from "./PhotoPicker";
-import { QuickActionsSection } from "./QuickActionsSection";
-import { ActionBottomSheet } from "./ActionBottomSheet";
-import { SelectedState } from "./ActionTile";
+import { Ionicons } from "@expo/vector-icons";
+import { colors, spacing, radius, theme } from "../../theme";
 import { useFeedStore } from "../../store/feedStore";
-import {
-  QUICK_ACTIONS,
-  CATEGORY_ORDER,
-  getActionsByCategory,
-  getActionById,
-  getDefaultVariant,
-  getNextCycleVariant,
-  QuickAction,
-} from "../../data/quickActions";
 
 interface ActivitiesTabProps {
   residentId: string | null;
   testID?: string;
 }
 
+// Action types with sub-options for quick logging
+const QUICK_ACTIONS = [
+  {
+    id: "meal",
+    label: "Meal",
+    icon: "restaurant-outline" as const,
+    color: "#10B981",
+    options: [
+      "Breakfast",
+      "Lunch",
+      "Dinner",
+      "Snack",
+      "Full meal",
+      "Partial meal",
+      "Refused meal",
+    ],
+  },
+  {
+    id: "meds",
+    label: "Medication",
+    icon: "medical-outline" as const,
+    color: "#3B82F6",
+    options: [
+      "Morning meds",
+      "Afternoon meds",
+      "Evening meds",
+      "PRN medication",
+      "Refused medication",
+    ],
+  },
+  {
+    id: "activity",
+    label: "Activity",
+    icon: "walk-outline" as const,
+    color: "#F59E0B",
+    options: [
+      "Walking",
+      "Physiotherapy",
+      "Group activity",
+      "Recreation",
+      "Exercise",
+      "Outdoor time",
+    ],
+  },
+  {
+    id: "rest",
+    label: "Rest",
+    icon: "bed-outline" as const,
+    color: "#8B5CF6",
+    options: ["Nap", "Sleep", "Bed rest", "Restless", "Good sleep"],
+  },
+  {
+    id: "bathroom",
+    label: "Bathroom",
+    icon: "water-outline" as const,
+    color: "#06B6D4",
+    options: ["Toilet", "Incontinence", "Assistance needed", "Independent"],
+  },
+  {
+    id: "hygiene",
+    label: "Hygiene",
+    icon: "sparkles-outline" as const,
+    color: "#EC4899",
+    options: [
+      "Shower",
+      "Bath",
+      "Wash",
+      "Teeth brushing",
+      "Hair care",
+      "Assistance needed",
+    ],
+  },
+] as const;
+
 export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
   residentId,
   testID = "activities-tab",
 }) => {
-  const { residents, addFeedItem } = useFeedStore();
-  const keyboardHeight = useSharedValue(0);
-
-  // Form state - new model
-  const [selectedActions, setSelectedActions] = useState<SelectedState>({});
-  const [recentActions, setRecentActions] = useState<RecentAction[]>([]);
+  const { addFeedItem } = useFeedStore();
+  const [selectedAction, setSelectedAction] = useState<string | null>(null);
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [note, setNote] = useState("");
-  const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showOptionsModal, setShowOptionsModal] = useState(false);
+  const [currentActionForOptions, setCurrentActionForOptions] = useState<
+    string | null
+  >(null);
 
-  // Bottom sheet state
-  const [bottomSheetAction, setBottomSheetAction] =
-    useState<QuickAction | null>(null);
-  const [showBottomSheet, setShowBottomSheet] = useState(false);
-
-  // Recent residents (mock implementation - in real app would come from user activity)
-  const recentResidentIds = useMemo(() => {
-    return residents.slice(0, 3).map((r) => r.id);
-  }, [residents]);
-
-  // Handle keyboard events
-  useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener(
-      "keyboardDidShow",
-      (e) => {
-        keyboardHeight.value = withSpring(e.endCoordinates.height);
-      }
-    );
-    const keyboardDidHideListener = Keyboard.addListener(
-      "keyboardDidHide",
-      () => {
-        keyboardHeight.value = withSpring(0);
-      }
-    );
-
-    return () => {
-      keyboardDidHideListener?.remove();
-      keyboardDidShowListener?.remove();
-    };
-  }, []);
-
-  const handleActionPress = (action: QuickAction) => {
-    setBottomSheetAction(action);
-    setShowBottomSheet(true);
-  };
-
-  const handleActionToggle = (actionId: string) => {
-    const action = getActionById(actionId);
-    if (!action) return;
-
-    if (selectedActions[actionId]) {
-      // If already selected, cycle to next variant or deselect
-      const currentVariant = selectedActions[actionId];
-      const nextVariant = getNextCycleVariant(action, currentVariant);
-
-      if (nextVariant) {
-        setSelectedActions((prev) => ({
-          ...prev,
-          [actionId]: nextVariant,
-        }));
-      } else {
-        // No cycle defined, just deselect
-        setSelectedActions((prev) => {
-          const newState = { ...prev };
-          delete newState[actionId];
-          return newState;
-        });
-      }
-    } else {
-      // Select with default variant
-      const defaultVariant = getDefaultVariant(action);
-      setSelectedActions((prev) => ({
-        ...prev,
-        [actionId]: defaultVariant?.id || "default",
-      }));
+  const handleActionSelect = (actionId: string) => {
+    setSelectedAction(selectedAction === actionId ? null : actionId);
+    if (selectedAction !== actionId) {
+      setSelectedOption(null); // Clear option when changing action
     }
   };
 
-  const handleVariantToggle = (actionId: string, variantId: string) => {
-    const isCurrentlySelected = selectedActions[actionId] === variantId;
-
-    if (isCurrentlySelected) {
-      // Deselect
-      setSelectedActions((prev) => {
-        const newState = { ...prev };
-        delete newState[actionId];
-        return newState;
-      });
-    } else {
-      // Select this variant
-      setSelectedActions((prev) => ({
-        ...prev,
-        [actionId]: variantId,
-      }));
-    }
+  const handleLongPress = (actionId: string) => {
+    setCurrentActionForOptions(actionId);
+    setShowOptionsModal(true);
   };
 
-  const handleRecentSelect = (recentAction: RecentAction) => {
-    const action = getActionById(recentAction.actionId);
-    if (!action) return;
-
-    setSelectedActions((prev) => ({
-      ...prev,
-      [recentAction.actionId]: recentAction.variantId,
-    }));
+  const handleOptionSelect = (option: string) => {
+    setSelectedOption(option);
+    setSelectedAction(currentActionForOptions);
+    setShowOptionsModal(false);
   };
 
   const handleSubmit = async () => {
-    if (!residentId) return;
+    if (!residentId || !selectedAction) {
+      Alert.alert("Missing Information", "Please select an action to log.");
+      return;
+    }
 
     setIsSubmitting(true);
 
     try {
-      const selectedActionIds = Object.keys(selectedActions);
+      const logText = selectedOption
+        ? `${selectedOption}${note.trim() ? ` - ${note.trim()}` : ""}`
+        : note.trim() || undefined;
 
-      if (
-        selectedActionIds.length === 0 &&
-        !note &&
-        selectedPhotos.length === 0
-      ) {
-        throw new Error("Please select at least one action or add a note");
-      }
+      addFeedItem({
+        residentId,
+        authorId: "staff-user",
+        type: selectedAction as any,
+        text: logText,
+        tags: selectedOption ? [selectedOption] : [],
+      });
 
-      // Submit each selected action as a separate feed item
-      for (const actionId of selectedActionIds) {
-        const action = getActionById(actionId);
-        const variantId = selectedActions[actionId];
-
-        if (action) {
-          const variant = action.variants?.find((v) => v.id === variantId);
-          const tags = variant ? [variant.id] : [];
-
-          addFeedItem({
-            residentId,
-            authorId: "staff-user", // Would come from auth
-            type: action.id as any,
-            text: note || undefined,
-            tags,
-            photoUrl: selectedPhotos[0] || undefined,
-          });
-        }
-      }
-
-      // If only note/photo without action, create a note entry
-      if (
-        selectedActionIds.length === 0 &&
-        (note || selectedPhotos.length > 0)
-      ) {
-        addFeedItem({
-          residentId,
-          authorId: "staff-user",
-          type: "note",
-          text: note || "Photo update",
-          tags: [],
-          photoUrl: selectedPhotos[0] || undefined,
-        });
-      }
-
-      // Update recents
-      const newRecents: RecentAction[] = selectedActionIds.map((actionId) => ({
-        actionId,
-        variantId: selectedActions[actionId],
-        timestamp: new Date().toISOString(),
-      }));
-
-      setRecentActions((prev) => [...newRecents, ...prev].slice(0, 6));
-
-      // Clear form
-      setSelectedActions({});
+      // Reset form
+      setSelectedAction(null);
+      setSelectedOption(null);
       setNote("");
-      setSelectedPhotos([]);
+
+      Alert.alert("Success", "Update logged successfully!");
     } catch (error) {
       console.error("Error submitting quick log:", error);
+      Alert.alert("Error", "Failed to log update. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Check if form is valid for submission
-  const isFormValid = useMemo(() => {
-    return (
-      Object.keys(selectedActions).length > 0 ||
-      note.trim() ||
-      selectedPhotos.length > 0
-    );
-  }, [selectedActions, note, selectedPhotos]);
-
-  const contentAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      paddingBottom: keyboardHeight.value > 0 ? keyboardHeight.value + 20 : 80,
-    };
-  });
-
   if (!residentId) {
     return (
       <View style={styles.container} testID={testID}>
         <View style={styles.emptyState}>
-          {/* This would be rendered by parent component */}
+          <Ionicons name="person-outline" size={64} color={colors.textMuted} />
+          <Text style={styles.emptyStateText}>
+            Please select a resident to begin logging
+          </Text>
         </View>
       </View>
     );
@@ -244,92 +176,164 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
 
   return (
     <View style={styles.container} testID={testID}>
-      <Animated.ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[styles.contentContainer, contentAnimatedStyle]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={100}
       >
-        {/* Recents Row */}
-        <RecentsRow
-          recents={recentActions}
-          onSelectRecent={handleRecentSelect}
-          testID="quick-log-recents"
-        />
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Action Selection */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>What would you like to log?</Text>
+            <View style={styles.actionsGrid}>
+              {QUICK_ACTIONS.map((action) => (
+                <TouchableOpacity
+                  key={action.id}
+                  style={[
+                    styles.actionButton,
+                    selectedAction === action.id && styles.actionButtonSelected,
+                    { borderColor: action.color },
+                  ]}
+                  onPress={() => handleActionSelect(action.id)}
+                  onLongPress={() => handleLongPress(action.id)}
+                  delayLongPress={500}
+                  accessibilityRole="button"
+                  accessibilityState={{
+                    selected: selectedAction === action.id,
+                  }}
+                  accessibilityLabel={`${action.label} action - Hold to see options`}
+                  accessibilityHint="Hold for more options"
+                >
+                  <Ionicons
+                    name={action.icon}
+                    size={32}
+                    color={
+                      selectedAction === action.id ? "#FFFFFF" : action.color
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.actionButtonText,
+                      selectedAction === action.id &&
+                        styles.actionButtonTextSelected,
+                      {
+                        color:
+                          selectedAction === action.id
+                            ? "#FFFFFF"
+                            : action.color,
+                      },
+                    ]}
+                  >
+                    {action.label}
+                  </Text>
+                  {selectedAction === action.id && selectedOption && (
+                    <Text
+                      style={[styles.selectedOptionText, { color: "#FFFFFF" }]}
+                    >
+                      {selectedOption}
+                    </Text>
+                  )}
+                  <View style={styles.longPressIndicator}>
+                    <Ionicons
+                      name="ellipsis-horizontal"
+                      size={16}
+                      color={
+                        selectedAction === action.id ? "#FFFFFF" : action.color
+                      }
+                    />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
 
-        {/* Categorized Quick Actions */}
-        {CATEGORY_ORDER.map((categoryKey) => {
-          const actions = getActionsByCategory(categoryKey);
-          return (
-            <QuickActionsSection
-              key={categoryKey}
-              categoryKey={categoryKey}
-              actions={actions}
-              selectedActions={selectedActions}
-              onActionPress={handleActionPress}
-              onActionToggle={handleActionToggle}
-              testID={`quick-actions-${categoryKey}`}
-            />
-          );
-        })}
+          {/* Note Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Add a note (optional)</Text>
+            <View style={styles.noteContainer}>
+              <TextInput
+                style={styles.noteInput}
+                value={note}
+                onChangeText={setNote}
+                placeholder="Add any additional details about this update..."
+                placeholderTextColor={colors.textMuted}
+                multiline
+                maxLength={300}
+                textAlignVertical="top"
+                accessibilityLabel="Note input"
+              />
+              <Text style={styles.characterCount}>{note.length}/300</Text>
+            </View>
+          </View>
 
-        {/* Note Field */}
-        <NoteField
-          value={note}
-          onChangeText={setNote}
-          placeholder="Add any additional notes about this update..."
-          testID="quick-log-note"
-        />
-
-        {/* Photo Picker */}
-        <PhotoPicker
-          selectedPhotos={selectedPhotos}
-          onPhotosChange={setSelectedPhotos}
-          testID="quick-log-photos"
-        />
-
-        {/* Submit Button */}
-        <View style={styles.submitContainer}>
+          {/* Submit Button */}
           <TouchableOpacity
             style={[
               styles.submitButton,
-              !isFormValid && styles.submitButtonDisabled,
+              (!selectedAction || isSubmitting) && styles.submitButtonDisabled,
+              selectedAction && {
+                backgroundColor:
+                  QUICK_ACTIONS.find((a) => a.id === selectedAction)?.color ||
+                  colors.primary,
+              },
             ]}
             onPress={handleSubmit}
-            disabled={!isFormValid || isSubmitting}
+            disabled={!selectedAction || isSubmitting}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !selectedAction || isSubmitting }}
           >
-            <Text
-              style={[
-                styles.submitButtonText,
-                !isFormValid && styles.submitButtonTextDisabled,
-              ]}
-            >
-              {isSubmitting ? "Adding Update..." : "Add Update"}
+            <Text style={styles.submitButtonText}>
+              {isSubmitting ? "Logging..." : "Log Update"}
             </Text>
           </TouchableOpacity>
-        </View>
-      </Animated.ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
-      {/* Action Bottom Sheet */}
-      <ActionBottomSheet
-        action={bottomSheetAction}
-        selected={
-          bottomSheetAction ? selectedActions[bottomSheetAction.id] : undefined
-        }
-        visible={showBottomSheet}
-        onClose={() => {
-          setShowBottomSheet(false);
-          setBottomSheetAction(null);
-        }}
-        onVariantToggle={(actionId, variantId) => {
-          handleVariantToggle(actionId, variantId);
-          setShowBottomSheet(false);
-          setBottomSheetAction(null);
-        }}
-        onNotesChange={() => {}}
-        onMetricsChange={() => {}}
-        testID="action-bottom-sheet"
-      />
+      {/* Options Modal */}
+      <Modal
+        visible={showOptionsModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowOptionsModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.optionsModal}>
+            <Text style={styles.modalTitle}>
+              Choose{" "}
+              {
+                QUICK_ACTIONS.find((a) => a.id === currentActionForOptions)
+                  ?.label
+              }{" "}
+              Option
+            </Text>
+            <ScrollView style={styles.optionsScrollView}>
+              {currentActionForOptions &&
+                QUICK_ACTIONS.find(
+                  (a) => a.id === currentActionForOptions
+                )?.options.map((option) => (
+                  <TouchableOpacity
+                    key={option}
+                    style={styles.optionButton}
+                    onPress={() => handleOptionSelect(option)}
+                  >
+                    <Text style={styles.optionButtonText}>{option}</Text>
+                  </TouchableOpacity>
+                ))}
+            </ScrollView>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setShowOptionsModal(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -337,39 +341,159 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.bg,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
   },
   scrollView: {
     flex: 1,
   },
   contentContainer: {
-    padding: 16,
+    padding: spacing.lg,
+    paddingBottom: spacing.xl,
   },
   emptyState: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: spacing.xl,
   },
-  submitContainer: {
-    marginTop: 24,
-    marginBottom: 16,
+  emptyStateText: {
+    ...theme.typography.body,
+    color: colors.textMuted,
+    textAlign: "center",
+    marginTop: spacing.md,
+  },
+  section: {
+    marginBottom: spacing.lg,
+  },
+  sectionTitle: {
+    ...theme.typography.sectionTitle,
+    color: colors.text,
+    marginBottom: spacing.md,
+  },
+  actionsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.md,
+  },
+  actionButton: {
+    width: "47%",
+    aspectRatio: 1.2,
+    backgroundColor: colors.card,
+    borderWidth: 2,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+  },
+  actionButtonSelected: {
+    backgroundColor: colors.primary,
+  },
+  actionButtonText: {
+    ...theme.typography.bodyMedium,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  actionButtonTextSelected: {
+    color: "#FFFFFF",
+  },
+  noteContainer: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+  },
+  noteInput: {
+    ...theme.typography.body,
+    color: colors.text,
+    minHeight: 80,
+    maxHeight: 120,
+    textAlignVertical: "top",
+  },
+  characterCount: {
+    ...theme.typography.caption,
+    color: colors.textMuted,
+    textAlign: "right",
+    marginTop: spacing.xs,
   },
   submitButton: {
     backgroundColor: colors.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.lg,
     alignItems: "center",
     justifyContent: "center",
+    marginTop: spacing.md,
   },
   submitButtonDisabled: {
     backgroundColor: colors.border,
   },
   submitButtonText: {
-    color: colors.surface,
-    fontSize: 16,
+    ...theme.typography.body,
+    color: "#FFFFFF",
     fontWeight: "600",
   },
-  submitButtonTextDisabled: {
-    color: colors.textTertiary,
+  selectedOptionText: {
+    ...theme.typography.caption,
+    textAlign: "center",
+    marginTop: spacing.xs,
+    fontWeight: "500",
+  },
+  longPressIndicator: {
+    position: "absolute",
+    top: spacing.xs,
+    right: spacing.xs,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: spacing.lg,
+  },
+  optionsModal: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    width: "90%",
+    maxHeight: "70%",
+  },
+  modalTitle: {
+    ...theme.typography.heading,
+    color: colors.text,
+    marginBottom: spacing.lg,
+    textAlign: "center",
+  },
+  optionsScrollView: {
+    maxHeight: 300,
+  },
+  optionButton: {
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.bg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.sm,
+  },
+  optionButtonText: {
+    ...theme.typography.body,
+    color: colors.text,
+    textAlign: "center",
+    fontWeight: "500",
+  },
+  cancelButton: {
+    marginTop: spacing.lg,
+    padding: spacing.md,
+    backgroundColor: colors.border,
+    borderRadius: radius.md,
+    alignItems: "center",
+  },
+  cancelButtonText: {
+    ...theme.typography.body,
+    color: colors.text,
+    fontWeight: "600",
   },
 });
