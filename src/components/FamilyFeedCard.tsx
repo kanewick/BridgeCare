@@ -4,6 +4,7 @@ import { colors, radius, spacing, theme } from "../theme";
 import { Card } from "./Card";
 import { Badge } from "./Badge";
 import { FeedItem } from "../store/feedStore";
+import { formatRelativeTime, getAuthorName } from "../lib/feedUtils";
 
 interface FamilyFeedCardProps {
   item: FeedItem;
@@ -20,16 +21,6 @@ export const FamilyFeedCard: React.FC<FamilyFeedCardProps> = ({
   onPress,
   currentUserId,
 }) => {
-  // Map author IDs to display names
-  const getAuthorName = (authorId: string) => {
-    const authorNames: Record<string, string> = {
-      "skarlette-choi": "Skarlette Choi",
-      nurse1: "Nurse Smith",
-      nurse2: "Nurse Johnson",
-    };
-    return authorNames[authorId] || authorId;
-  };
-
   // Get update type configuration for family-friendly display
   const getUpdateConfig = (type: string) => {
     const configs: Record<
@@ -127,30 +118,6 @@ export const FamilyFeedCard: React.FC<FamilyFeedCardProps> = ({
     return configs[type] || configs.note;
   };
 
-  // Format timestamp in a family-friendly way
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffInHours = Math.floor(
-      (now.getTime() - date.getTime()) / (1000 * 60 * 60)
-    );
-
-    if (diffInHours < 1) {
-      return "Just now";
-    } else if (diffInHours < 2) {
-      return "1 hour ago";
-    } else if (diffInHours < 24) {
-      return `${diffInHours} hours ago`;
-    } else {
-      const diffInDays = Math.floor(diffInHours / 24);
-      if (diffInDays === 1) {
-        return "Yesterday";
-      } else {
-        return `${diffInDays} days ago`;
-      }
-    }
-  };
-
   const config = getUpdateConfig(item.type);
   const reactions = item.reactions || { heart: 0, reactedByMe: false };
   const authorName = getAuthorName(item.authorId);
@@ -187,7 +154,7 @@ export const FamilyFeedCard: React.FC<FamilyFeedCardProps> = ({
           </View>
           <View style={styles.timeContainer}>
             <Text style={styles.timestamp}>
-              {formatTimestamp(item.createdAt)}
+              {formatRelativeTime(item.createdAt, "friendly")}
             </Text>
           </View>
         </View>

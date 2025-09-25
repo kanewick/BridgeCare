@@ -16,21 +16,12 @@ import { ResidentStatusCard } from "../../components/ResidentStatusCard";
 import { CategoryRecents } from "../../components/CategoryRecents";
 import { IconDisplay } from "../../components/IconDisplay";
 import { useFeedStore } from "../../store/feedStore";
+import { getAuthorName } from "../../lib/feedUtils";
 
 export const StaffDashboardScreen: React.FC = () => {
   const navigation = useNavigation();
   const { getTodayStats, setActiveResident, feed, residents } = useFeedStore();
   const contentContainerStyle = useContentContainerStyle();
-
-  // Map author IDs to display names
-  const getAuthorName = (authorId: string) => {
-    const authorNames: Record<string, string> = {
-      "skarlette-choi": "Skarlette Choi",
-      nurse1: "Nurse Smith",
-      nurse2: "Nurse Johnson",
-    };
-    return authorNames[authorId] || authorId;
-  };
 
   // Get real-time stats every time the component renders
   const stats = getTodayStats();

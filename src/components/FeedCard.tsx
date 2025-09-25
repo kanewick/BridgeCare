@@ -4,6 +4,7 @@ import { colors, radius, spacing, theme } from "../theme";
 import { Card } from "./Card";
 import { Badge } from "./Badge";
 import { FeedItem } from "../store/feedStore";
+import { formatRelativeTime, getAuthorName } from "../lib/feedUtils";
 
 interface FeedCardProps {
   item: FeedItem;
@@ -22,33 +23,6 @@ export const FeedCard: React.FC<FeedCardProps> = ({
   showAuthorBadge = false,
   currentUserId,
 }) => {
-  // Map author IDs to display names
-  const getAuthorName = (authorId: string) => {
-    const authorNames: Record<string, string> = {
-      "skarlette-choi": "Skarlette Choi",
-      nurse1: "Nurse Smith",
-      nurse2: "Nurse Johnson",
-    };
-    return authorNames[authorId] || authorId;
-  };
-
-  // Format timestamp
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffInHours = Math.floor(
-      (now.getTime() - date.getTime()) / (1000 * 60 * 60)
-    );
-
-    if (diffInHours < 1) {
-      return "Just now";
-    } else if (diffInHours < 24) {
-      return `${diffInHours}h ago`;
-    } else {
-      const diffInDays = Math.floor(diffInHours / 24);
-      return `${diffInDays}d ago`;
-    }
-  };
 
   const handleReaction = () => {
     onToggleReaction(item.id);
@@ -103,7 +77,7 @@ export const FeedCard: React.FC<FeedCardProps> = ({
             )}
           </View>
           <Text style={styles.timestamp}>
-            {formatTimestamp(item.createdAt)}
+            {formatRelativeTime(item.createdAt)}
           </Text>
         </View>
 
