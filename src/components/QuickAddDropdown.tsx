@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import type { ComponentRef } from "react";
 import {
   View,
   Text,
@@ -104,11 +105,16 @@ export const QuickAddDropdown: React.FC<QuickAddDropdownProps> = ({
     width: number;
     height: number;
   } | null>(null);
-  const buttonRef = useRef<TouchableOpacity>(null);
+  const buttonRef = useRef<ComponentRef<typeof TouchableOpacity> | null>(null);
 
   const handleButtonPress = () => {
     if (buttonRef.current) {
-      buttonRef.current.measureInWindow((x, y, width, height) => {
+      buttonRef.current.measureInWindow((
+        x: number,
+        y: number,
+        width: number,
+        height: number
+      ) => {
         setButtonLayout({ x, y, width, height });
         setIsVisible(true);
       });

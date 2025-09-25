@@ -33,6 +33,8 @@ export const colors = {
   warningSoft: "#FFFBEB",
   error: "#EF4444",
   errorSoft: "#FEF2F2",
+  info: "#2563EB",
+  infoSoft: "#EFF6FF",
 
   // Status-specific accent bars
   statusActive: "#10B981",
@@ -47,6 +49,7 @@ export const colors = {
 };
 
 export const radius = {
+  xs: 6,
   sm: 8,
   md: 12,
   lg: 16,
@@ -140,6 +143,18 @@ export const theme = {
       lineHeight: 24,
       letterSpacing: -0.2,
     },
+    h2: {
+      fontSize: 24,
+      fontWeight: "700",
+      lineHeight: 30,
+      letterSpacing: -0.3,
+    },
+    h3: {
+      fontSize: 18,
+      fontWeight: "700",
+      lineHeight: 22,
+      letterSpacing: -0.15,
+    },
     sectionTitle: {
       fontSize: 18,
       fontWeight: "700",
@@ -152,6 +167,11 @@ export const theme = {
       fontSize: 16,
       fontWeight: "400",
       lineHeight: 22,
+    },
+    bodyLarge: {
+      fontSize: 17,
+      fontWeight: "500",
+      lineHeight: 24,
     },
     bodyMedium: {
       fontSize: 16,
